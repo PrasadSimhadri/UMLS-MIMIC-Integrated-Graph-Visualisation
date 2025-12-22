@@ -37,6 +37,7 @@ export async function POST(req) {
 
     result.records.forEach(record => {
         const row = {};
+        const recordNodeIds = []; // Track node IDs for VISIT_DRUGS fallback
 
         record.keys.forEach(key => {
             const value = record.get(key);
@@ -64,6 +65,9 @@ export async function POST(req) {
                 // Map Neo4j internal ID to our node ID
                 nodeIdMap[value.identity.toString()] = nodeId;
 
+                // Track nodes for VISIT_DRUGS
+                recordNodeIds.push(nodeId);
+
                 nodes[nodeId] = {
                     id: nodeId,
                     label: displayName,
@@ -89,20 +93,43 @@ export async function POST(req) {
             }
         });
 
+        // Special case: VISIT_DRUGS - create direct edge between Encounter and Drug
+        if (queryType === "VISIT_DRUGS" && recordNodeIds.length === 2) {
+            edges.push({
+                _direct: true,
+                from: recordNodeIds[0],
+                to: recordNodeIds[1],
+                label: "PRESCRIBED"
+            });
+        }
+
         rows.push(row);
     });
 
     // Resolve edge node IDs using the nodeIdMap
-    const resolvedEdges = edges.map(edge => ({
-        from: nodeIdMap[edge._startIdentity] || edge._startIdentity,
-        to: nodeIdMap[edge._endIdentity] || edge._endIdentity,
-        label: edge.label
-    }));
+    const resolvedEdges = edges.map(edge => {
+        // Direct edges (for VISIT_DRUGS)
+        if (edge._direct) {
+            return {
+                from: edge.from,
+                to: edge.to,
+                label: edge.label
+            };
+        }
+        return {
+            from: nodeIdMap[edge._startIdentity] || edge._startIdentity,
+            to: nodeIdMap[edge._endIdentity] || edge._endIdentity,
+            label: edge.label
+        };
+    });
 
-    // Remove duplicate edges
+    // Remove duplicate edges and filter invalid ones
     const uniqueEdges = [];
     const edgeSet = new Set();
     resolvedEdges.forEach(edge => {
+        // Skip edges where endpoints don't exist in nodes
+        if (!nodes[edge.from] || !nodes[edge.to]) return;
+
         const edgeKey = `${edge.from}-${edge.label}-${edge.to}`;
         if (!edgeSet.has(edgeKey)) {
             edgeSet.add(edgeKey);
