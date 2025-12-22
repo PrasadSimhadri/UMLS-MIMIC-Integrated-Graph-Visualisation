@@ -31,6 +31,9 @@ export async function POST(req) {
     const nodes = {};
     const edges = [];
     const rows = [];
+    
+    // Map Neo4j internal node IDs to our node IDs
+    const nodeIdMap = {};
 
     result.records.forEach(record => {
         const row = {};
@@ -38,34 +41,49 @@ export async function POST(req) {
         record.keys.forEach(key => {
             const value = record.get(key);
 
-            // -------- NODE --------
-            if (value?.labels) {
-                const label = value.labels[0];
-                const id =
-                    value.properties.id ||
-                    value.properties.icd_code ||
-                    value.properties.name;
+            // ---------- NODE ----------
+            if (value && value.labels) {
+                const nodeType = value.labels[0];
+                const props = value.properties;
 
-                nodes[id] = {
-                    id,
-                    label,
-                    name:
-                        value.properties.name ||
-                        value.properties.icd_code ||
-                        value.properties.id
+                // Get display name based on node type
+                const displayName = 
+                    props.name || 
+                    props.id || 
+                    props.icd_code || 
+                    props.title ||
+                    `${nodeType}_${value.identity.toString()}`;
+
+                // Canonical ID for edges
+                const nodeId = 
+                    props.id || 
+                    props.icd_code || 
+                    props.name ||
+                    value.identity.toString();
+
+                // Map Neo4j internal ID to our node ID
+                nodeIdMap[value.identity.toString()] = nodeId;
+
+                nodes[nodeId] = {
+                    id: nodeId,
+                    label: displayName,
+                    group: nodeType,
+                    title: `${nodeType}: ${displayName}`
                 };
 
-                row[label] =
-                    value.properties.name ||
-                    value.properties.icd_code ||
-                    value.properties.id;
+                // Table row
+                row[nodeType] = displayName;
             }
 
-            // -------- RELATIONSHIP --------
-            if (value?.type) {
+            // ---------- RELATIONSHIP ----------
+            if (value && value.type && value.start && value.end) {
+                // Store relationship info temporarily - we'll resolve IDs after processing all nodes
+                const relStartId = value.start.toString();
+                const relEndId = value.end.toString();
+                
                 edges.push({
-                    from: value.start.toString(),
-                    to: value.end.toString(),
+                    _startIdentity: relStartId,
+                    _endIdentity: relEndId,
                     label: value.type
                 });
             }
@@ -74,10 +92,31 @@ export async function POST(req) {
         rows.push(row);
     });
 
+    // Resolve edge node IDs using the nodeIdMap
+    const resolvedEdges = edges.map(edge => ({
+        from: nodeIdMap[edge._startIdentity] || edge._startIdentity,
+        to: nodeIdMap[edge._endIdentity] || edge._endIdentity,
+        label: edge.label
+    }));
+
+    // Remove duplicate edges
+    const uniqueEdges = [];
+    const edgeSet = new Set();
+    resolvedEdges.forEach(edge => {
+        const edgeKey = `${edge.from}-${edge.label}-${edge.to}`;
+        if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
+            uniqueEdges.push(edge);
+        }
+    });
+
+    console.log("NODES:", Object.values(nodes));
+    console.log("EDGES:", uniqueEdges);
+
     return Response.json({
         graph: {
             nodes: Object.values(nodes),
-            edges
+            edges: uniqueEdges
         },
         table: rows
     });
