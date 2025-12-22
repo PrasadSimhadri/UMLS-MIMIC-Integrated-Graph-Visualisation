@@ -49,15 +49,15 @@ export async function POST(req) {
                 // Get display name based on node type
                 const displayName = 
                     props.name || 
+                    props.icd_code ||   // Check icd_code BEFORE id
                     props.id || 
-                    props.icd_code || 
                     props.title ||
                     `${nodeType}_${value.identity.toString()}`;
 
                 // Canonical ID for edges
                 const nodeId = 
+                    props.icd_code ||   // Check icd_code BEFORE id
                     props.id || 
-                    props.icd_code || 
                     props.name ||
                     value.identity.toString();
 

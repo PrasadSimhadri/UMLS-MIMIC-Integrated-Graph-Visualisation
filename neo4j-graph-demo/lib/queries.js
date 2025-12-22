@@ -5,7 +5,7 @@ export const queries = {
         cypher: `
      MATCH (p:Patient {id:$id})-[r:PRESCRIBED]->(d:Drug)
 WITH p, d, collect(r)[0] AS rel
-RETURN p, rel, d LIMIT 20
+RETURN p, rel, d LIMIT 10
     `,
         param: "id"
     },
@@ -14,7 +14,7 @@ RETURN p, rel, d LIMIT 20
         cypher: `
       MATCH (p:Patient {id:$id})-[r:DIAGNOSED_AS]->(d:Diagnosis)
 WITH p, d, collect(r)[0] AS rel
-RETURN p, rel, d LIMIT 20
+RETURN p, rel, d LIMIT 10
     `,
         param: "id"
     },
@@ -65,7 +65,7 @@ RETURN p, rel, d LIMIT 20
       -[:DIAGNOSED]->(:Diagnosis)
       -[r:PRESCRIBED_FOR]->(d:Drug)
       WITH e, d, collect(r)[0] AS rel
-RETURN DISTINCT e,rel, d
+    RETURN DISTINCT e,rel, d LIMIT 10
   `,
         param: "visit"
     }
