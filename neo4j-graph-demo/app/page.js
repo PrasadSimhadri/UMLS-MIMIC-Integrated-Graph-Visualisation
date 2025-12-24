@@ -10,6 +10,7 @@ export default function Home() {
     const [inputValue, setInputValue] = useState("");
     const [records, setRecords] = useState([]);
     const [view, setView] = useState("graph");
+    const [selectedNode, setSelectedNode] = useState(null);
 
     async function runQuery() {
         if (!inputValue || inputValue.trim() === "") {
@@ -52,6 +53,76 @@ export default function Home() {
     }
 
     const graphData = records.graph || null;
+
+    // Component to display node properties based on node type
+    function NodePropertiesPanel({ node }) {
+        if (!node) return null;
+
+        const nodeType = node.group;
+        const properties = node.properties || {};
+
+        // Define which properties to show for each node type
+        const propertyConfig = {
+            Diagnosis: [
+                { key: "icd_code", label: "ICD Code" },
+                { key: "icd_version", label: "ICD Version" },
+                { key: "canonical_code", label: "Canonical Code (UMLS CUI)" },
+                { key: "id", label: "Node ID" }
+            ],
+            Drug: [
+                { key: "name", label: "Drug Name" },
+                { key: "canonical_code", label: "Canonical Code (RxNorm)" },
+                { key: "id", label: "Node ID" }
+            ],
+            Encounter: [
+                { key: "id", label: "Encounter ID" },
+                { key: "canonical_code", label: "Canonical Code" }
+            ],
+            Patient: [
+                { key: "id", label: "Patient ID" },
+                { key: "canonical_code", label: "Canonical Code" }
+            ]
+        };
+
+        const config = propertyConfig[nodeType] || [];
+
+        return (
+            <div>
+                <div style={propertyRowStyle}>
+                    <span style={propertyLabelStyle}>Display Label</span>
+                    <span style={propertyValueStyle}>{node.label}</span>
+                </div>
+                <div style={propertyRowStyle}>
+                    <span style={propertyLabelStyle}>Type</span>
+                    <span style={{ ...propertyValueStyle, ...getNodeTypeBadge(nodeType) }}>{nodeType}</span>
+                </div>
+                {config.map(({ key, label }) => (
+                    properties[key] && (
+                        <div key={key} style={propertyRowStyle}>
+                            <span style={propertyLabelStyle}>{label}</span>
+                            <span style={propertyValueStyle}>{properties[key]}</span>
+                        </div>
+                    )
+                ))}
+            </div>
+        );
+    }
+
+    function getNodeTypeBadge(nodeType) {
+        const colors = {
+            Patient: { backgroundColor: "#dbeafe", color: "#2563eb" },
+            Drug: { backgroundColor: "#d1fae5", color: "#059669" },
+            Diagnosis: { backgroundColor: "#fef3c7", color: "#d97706" },
+            Encounter: { backgroundColor: "#ede9fe", color: "#7c3aed" }
+        };
+        return {
+            ...colors[nodeType],
+            padding: "2px 8px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            fontWeight: "600"
+        };
+    }
 
     function TableView({ rows }) {
         if (!rows || rows.length === 0) return <p>No data</p>;
@@ -279,7 +350,32 @@ export default function Home() {
                 {/* Output */}
                 <div style={{ marginTop: "30px" }}>
                     {view === "graph" && records.graph && (
-                        <GraphView graph={records.graph} />
+                        <div style={{ display: "flex", gap: "20px" }}>
+                            {/* Node Properties Panel */}
+                            {selectedNode && (
+                                <div style={nodePanelStyle}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                                        <h3 style={{ margin: 0, color: "#1f2937", fontSize: "16px" }}>
+                                            {selectedNode.group} Properties
+                                        </h3>
+                                        <button
+                                            onClick={() => setSelectedNode(null)}
+                                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280" }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <NodePropertiesPanel node={selectedNode} />
+                                </div>
+                            )}
+                            {/* Graph View */}
+                            <div style={{ flex: 1 }}>
+                                <GraphView 
+                                    graph={records.graph} 
+                                    onNodeClick={(node) => setSelectedNode(node)}
+                                />
+                            </div>
+                        </div>
                     )}
 
                     {view === "table" && records.table && (
@@ -346,4 +442,36 @@ const tableStyle = {
     borderRadius: "8px",
     maxHeight: "400px",
     overflow: "auto"
+};
+
+const nodePanelStyle = {
+    width: "280px",
+    backgroundColor: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    padding: "15px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+    height: "fit-content",
+    maxHeight: "500px",
+    overflowY: "auto"
+};
+
+const propertyRowStyle = {
+    display: "flex",
+    flexDirection: "column",
+    padding: "8px 0",
+    borderBottom: "1px solid #f3f4f6"
+};
+
+const propertyLabelStyle = {
+    fontSize: "12px",
+    color: "#6b7280",
+    marginBottom: "4px",
+    fontWeight: "500"
+};
+
+const propertyValueStyle = {
+    fontSize: "14px",
+    color: "#1f2937",
+    wordBreak: "break-word"
 };

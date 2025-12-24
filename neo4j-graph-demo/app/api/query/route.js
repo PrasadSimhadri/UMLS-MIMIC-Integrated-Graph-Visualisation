@@ -68,11 +68,19 @@ export async function POST(req) {
                 // Track nodes for VISIT_DRUGS
                 recordNodeIds.push(nodeId);
 
+                // Convert Neo4j Integer values to regular numbers
+                const cleanProps = {};
+                Object.keys(props).forEach(k => {
+                    const v = props[k];
+                    cleanProps[k] = neo4j.isInt(v) ? v.toNumber() : v;
+                });
+
                 nodes[nodeId] = {
                     id: nodeId,
                     label: displayName,
                     group: nodeType,
-                    title: `${nodeType}: ${displayName}`
+                    title: `${nodeType}: ${displayName}`,
+                    properties: cleanProps  // Include all node properties
                 };
 
                 // Table row
