@@ -22,11 +22,17 @@ export async function POST(req) {
         );
     }
 
-    const result = await session.run(
-        queryDef.cypher,
-        { [queryDef.param]: params[queryDef.param] }
-    );
+    // Handle queries without parameters (like ALL_PATIENTS, ALL_VISITS)
+    const queryParams = queryDef.param ? { [queryDef.param]: params[queryDef.param] } : {};
+
+    const result = await session.run(queryDef.cypher, queryParams);
     await session.close();
+
+    // Special handling for ID list queries
+    if (queryType === "ALL_PATIENTS" || queryType === "ALL_VISITS") {
+        const ids = result.records.map(record => record.get("id"));
+        return Response.json({ ids });
+    }
 
     const nodes = {};
     const edges = [];

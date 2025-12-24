@@ -1,5 +1,16 @@
 export const queries = {
 
+    // LIST ALL IDs - for dropdowns
+    ALL_PATIENTS: {
+        cypher: `MATCH (p:Patient) RETURN p.id AS id ORDER BY p.id LIMIT 100`,
+        param: null
+    },
+
+    ALL_VISITS: {
+        cypher: `MATCH (e:Encounter) RETURN e.id AS id ORDER BY e.id LIMIT 10`,
+        param: null
+    },
+
     // PATIENT QUERIES - PATIENT_10000032
     PATIENT_DRUGS: {
         cypher: `

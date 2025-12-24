@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GraphView from "@/components/GraphView";
 import { toGraph } from "@/lib/transform";
 
@@ -11,6 +11,37 @@ export default function Home() {
     const [records, setRecords] = useState([]);
     const [view, setView] = useState("graph");
     const [selectedNode, setSelectedNode] = useState(null);
+    const [availableIds, setAvailableIds] = useState([]);
+    const [loadingIds, setLoadingIds] = useState(false);
+
+    // Fetch available IDs when entity changes
+    useEffect(() => {
+        async function fetchIds() {
+            if (entity !== "Patient" && entity !== "Visit") {
+                setAvailableIds([]);
+                return;
+            }
+
+            setLoadingIds(true);
+            try {
+                const queryType = entity === "Patient" ? "ALL_PATIENTS" : "ALL_VISITS";
+                const res = await fetch("/api/query", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ queryType, params: {} })
+                });
+                const data = await res.json();
+                if (data.ids) {
+                    setAvailableIds(data.ids);
+                }
+            } catch (err) {
+                console.error("Failed to fetch IDs:", err);
+                setAvailableIds([]);
+            }
+            setLoadingIds(false);
+        }
+        fetchIds();
+    }, [entity]);
 
     async function runQuery() {
         if (!inputValue || inputValue.trim() === "") {
@@ -297,19 +328,38 @@ export default function Home() {
                 <div style={{ marginTop: "20px" }}>
                     <label style={{ color: "black" }}><b>
                         {entity === "Patient"
-                            ? "Enter Patient ID"
+                            ? "Select Patient ID"
                             : entity === "Diagnosis"
                                 ? "Enter ICD Code"
                                 : entity === "Drug"
                                     ? "Enter Drug Name"
-                                    : "Enter Visit ID"}
+                                    : "Select Visit ID"}
                     </b></label>
-                    <input
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="e.g. PATIENT_10000032"
-                        style={inputStyle}
-                    />
+                    
+                    {/* Dropdown for Patient and Visit */}
+                    {(entity === "Patient" || entity === "Visit") ? (
+                        <select
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            style={selectStyle}
+                            disabled={loadingIds}
+                        >
+                            <option value="">
+                                {loadingIds ? "Loading..." : `-- Select ${entity} ID --`}
+                            </option>
+                            {availableIds.map(id => (
+                                <option key={id} value={id}>{id}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        /* Text input for Diagnosis and Drug */
+                        <input
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder={entity === "Diagnosis" ? "e.g. I10 or 250.00" : "e.g. Furosemide"}
+                            style={inputStyle}
+                        />
+                    )}
                 </div>
 
                 {/* Buttons */}
