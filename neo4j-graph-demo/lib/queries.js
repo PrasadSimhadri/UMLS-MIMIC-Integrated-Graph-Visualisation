@@ -3,28 +3,28 @@ export const queries = {
     // PATIENT QUERIES - PATIENT_10000032
     PATIENT_DRUGS: {
         cypher: `
-     MATCH (p:Patient {id:$id})-[r:PRESCRIBED]->(d:Drug)
-WITH p, d, collect(r)[0] AS rel
-RETURN p, rel, d LIMIT 10
-    `,
+        MATCH (p:Patient {id:$id})-[r:PRESCRIBED]->(d:Drug)
+        WITH p, d, collect(r)[0] AS rel
+        RETURN p, rel, d LIMIT 10
+        `,
         param: "id"
     },
 
     PATIENT_DIAGNOSES: {
         cypher: `
-      MATCH (p:Patient {id:$id})-[r:DIAGNOSED_AS]->(d:Diagnosis)
-WITH p, d, collect(r)[0] AS rel
-RETURN p, rel, d LIMIT 10
-    `,
+        MATCH (p:Patient {id:$id})-[r:DIAGNOSED_AS]->(d:Diagnosis)
+        WITH p, d, collect(r)[0] AS rel
+        RETURN p, rel, d LIMIT 10
+        `,
         param: "id"
     },
 
     PATIENT_ADMISSIONS: {
         cypher: `
-    MATCH (p:Patient {id:$id})-[r:ADMITTED]->(e:Encounter)
-    WITH p, e, collect(r)[0] AS rel
-    RETURN p, rel, e
-  `,
+        MATCH (p:Patient {id:$id})-[r:ADMITTED]->(e:Encounter)
+        WITH p, e, collect(r)[0] AS rel
+        RETURN p, rel, e
+        `,
         param: "id"
     },
 

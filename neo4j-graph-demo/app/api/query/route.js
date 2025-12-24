@@ -137,8 +137,8 @@ export async function POST(req) {
         }
     });
 
-    console.log("NODES:", Object.values(nodes));
-    console.log("EDGES:", uniqueEdges);
+    // console.log("NODES:", Object.values(nodes));
+    // console.log("EDGES:", uniqueEdges);
 
     return Response.json({
         graph: {

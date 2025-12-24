@@ -35,8 +35,8 @@ export function toGraph(records) {
     });
   });
 
-  console.log("GRAPH NODES:", nodes);
-  console.log("GRAPH EDGES:", edges);
+//   console.log("GRAPH NODES:", nodes);
+//   console.log("GRAPH EDGES:", edges);
 
   return {
     nodes: Object.values(nodes),

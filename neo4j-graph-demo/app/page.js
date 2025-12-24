@@ -123,9 +123,9 @@ export default function Home() {
                     boxShadow: "0 8px 24px rgba(0,0,0,0.08)"
                 }}
             >
-                <h2 style={{ marginBottom: "20px", textAlign: "center", color: "black" }}>
-                    Clinical Knowledge Graph Explorer
-                </h2>
+                <h1 style={{ marginBottom: "20px", textAlign: "center", color: "black", fontSize: "22px" }}>
+                    <b>Clinical Knowledge Graph Explorer</b>
+                </h1>
 
                 {/* 🔹 Controls */}
                 <div
