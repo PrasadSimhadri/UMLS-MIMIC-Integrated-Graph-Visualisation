@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import GraphView from "@/components/GraphView";
-import { toGraph } from "@/lib/transform";
 
 export default function Home() {
     const [entity, setEntity] = useState("Patient");
@@ -13,6 +12,7 @@ export default function Home() {
     const [selectedNode, setSelectedNode] = useState(null);
     const [availableIds, setAvailableIds] = useState([]);
     const [loadingIds, setLoadingIds] = useState(false);
+    const [isQuerying, setIsQuerying] = useState(false);
 
     // Fetch available IDs when entity changes
     useEffect(() => {
@@ -58,8 +58,6 @@ export default function Home() {
                         ? { drug: inputValue.trim() }
                         : { visit: inputValue.trim() };
 
-        const queryDef = query; // current selected query
-
         if (
             (entity === "Patient" && !query.startsWith("PATIENT_")) ||
             (entity === "Diagnosis" && !query.startsWith("DIAG_")) ||
@@ -70,6 +68,7 @@ export default function Home() {
             return;
         }
 
+        setIsQuerying(true);
         const res = await fetch("/api/query", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -81,9 +80,18 @@ export default function Home() {
 
         const data = await res.json();
         setRecords(data);
+        setIsQuerying(false);
     }
 
-    const graphData = records.graph || null;
+    function getNodeTypeBadgeClass(nodeType) {
+        const classes = {
+            Patient: "node-badge patient",
+            Drug: "node-badge drug",
+            Diagnosis: "node-badge diagnosis",
+            Encounter: "node-badge encounter"
+        };
+        return classes[nodeType] || "node-badge";
+    }
 
     // Component to display node properties based on node type
     function NodePropertiesPanel({ node }) {
@@ -92,17 +100,16 @@ export default function Home() {
         const nodeType = node.group;
         const properties = node.properties || {};
 
-        // Define which properties to show for each node type
         const propertyConfig = {
             Diagnosis: [
                 { key: "icd_code", label: "ICD Code" },
                 { key: "icd_version", label: "ICD Version" },
-                { key: "canonical_code", label: "Canonical Code (UMLS CUI)" },
-                { key: "id", label: "Node ID" }
+                { key: "canonical_code", label: "UMLS CUI" },
+                // { key: "id", label: "Node ID" }
             ],
             Drug: [
                 { key: "name", label: "Drug Name" },
-                { key: "canonical_code", label: "Canonical Code (RxNorm)" },
+                { key: "canonical_code", label: "RxNorm Code" },
                 { key: "id", label: "Node ID" }
             ],
             Encounter: [
@@ -118,14 +125,15 @@ export default function Home() {
         const config = propertyConfig[nodeType] || [];
 
         return (
-            <div>
-                <div style={propertyRowStyle}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {/* Header */}
+                {/* <div style={propertyRowStyle}>
                     <span style={propertyLabelStyle}>Display Label</span>
                     <span style={propertyValueStyle}>{node.label}</span>
-                </div>
+                </div> */}
                 <div style={propertyRowStyle}>
                     <span style={propertyLabelStyle}>Type</span>
-                    <span style={{ ...propertyValueStyle, ...getNodeTypeBadge(nodeType) }}>{nodeType}</span>
+                    <span className={getNodeTypeBadgeClass(nodeType)}>{nodeType}</span>
                 </div>
                 {config.map(({ key, label }) => (
                     properties[key] && (
@@ -139,278 +147,227 @@ export default function Home() {
         );
     }
 
-    function getNodeTypeBadge(nodeType) {
-        const colors = {
-            Patient: { backgroundColor: "#dbeafe", color: "#2563eb" },
-            Drug: { backgroundColor: "#d1fae5", color: "#059669" },
-            Diagnosis: { backgroundColor: "#fef3c7", color: "#d97706" },
-            Encounter: { backgroundColor: "#ede9fe", color: "#7c3aed" }
-        };
-        return {
-            ...colors[nodeType],
-            padding: "2px 8px",
-            borderRadius: "4px",
-            fontSize: "12px",
-            fontWeight: "600"
-        };
-    }
-
     function TableView({ rows }) {
-        if (!rows || rows.length === 0) return <p>No data</p>;
+        if (!rows || rows.length === 0) return (
+            <div style={emptyStateStyle}>
+                <p style={{ color: "#64748b", fontSize: "16px" }}>No data available</p>
+            </div>
+        );
 
         const columns = Object.keys(rows[0]);
 
         return (
-            <table
-                style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    marginTop: "20px",
-                    color: "#000"
-                }}
-            >
-                <thead>
-                    <tr>
-                        {columns.map(col => (
-                            <th
-                                key={col}
-                                style={{
-                                    border: "1px solid #ccc",
-                                    padding: "8px",
-                                    background: "#f3f4f6"
-                                }}
-                            >
-                                {col}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {rows.map((row, i) => (
-                        <tr key={i}>
+            <div style={{ overflowX: "auto", borderRadius: "12px" }}>
+                <table className="table-premium">
+                    <thead>
+                        <tr>
                             {columns.map(col => (
-                                <td
-                                    key={col}
-                                    style={{
-                                        border: "1px solid #ccc",
-                                        padding: "8px"
-                                    }}
-                                >
-                                    {row[col] || "-"}
-                                </td>
+                                <th key={col}>{col}</th>
                             ))}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {rows.map((row, i) => (
+                            <tr key={i}>
+                                {columns.map(col => (
+                                    <td key={col}>{row[col] || "-"}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         );
     }
 
     return (
-        <main
-            style={{
-                minHeight: "100vh",
-                background: "#f5f7fb",
-                padding: "40px"
-            }}
-        >
-            <div
-                style={{
-                    maxWidth: "900px",
-                    margin: "auto",
-                    background: "white",
-                    padding: "25px",
-                    borderRadius: "10px",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)"
-                }}
-            >
-                <h1 style={{ marginBottom: "20px", textAlign: "center", color: "black", fontSize: "22px" }}>
-                    <b>Clinical Knowledge Graph Explorer</b>
-                </h1>
-
-                {/* 🔹 Controls */}
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "20px"
-                    }}
-                >
-                    {/* Entity */}
-                    <div style={{ color: "black" }}>
-                        <label style={{ color: "black" }}><b>Select Entity</b></label>
-                        <select
-                            style={selectStyle}
-                            value={entity}
-                            onChange={(e) => {
-                                const newEntity = e.target.value;
-                                setEntity(newEntity);
-                                setInputValue("");
-                                setRecords({});
-                                // FORCE correct default query per entity
-                                if (newEntity === "Patient") {
-                                    setQuery("PATIENT_DIAGNOSES");
-                                } else if (newEntity === "Diagnosis") {
-                                    setQuery("DIAG_PATIENTS");
-                                } else if (newEntity === "Drug") {
-                                    setQuery("DRUG_PATIENTS");
-                                } else if (newEntity === "Visit") {
-                                    setQuery("VISIT_DIAGNOSES");
-                                }
-                            }}
-                        >
-
-                            <option value="Patient">Patient</option>
-                            {/* <option value="Diagnosis">Diagnosis</option>
-                            <option value="Drug">Drug</option> */}
-                            <option value="Visit">Visit</option>
-                        </select>
-                    </div>
-
-                    {/* Query */}
-                    <div style={{ color: "black" }}>
-                        <label style={{ color: "black" }}><b>Select Analysis</b></label>
-                        <select
-                            style={selectStyle}
-                            value={query}
-                            onChange={(e) => {
-                                setQuery(e.target.value);
-                                setInputValue("");     // RESET INPUT
-                                setRecords({});
-                            }}
-                        >
-
-                            {entity === "Patient" && (
-                                <>
-                                    <option value="PATIENT_DRUGS">
-                                        Patient → Drugs Prescribed
-                                    </option>
-                                    <option value="PATIENT_DIAGNOSES">
-                                        Patient → Diagnoses
-                                    </option>
-                                    <option value="PATIENT_ADMISSIONS">
-                                        Patient → Visits (Admissions)
-                                    </option>
-                                </>
-                            )}
-
-                            {entity === "Diagnosis" && (
-                                <>
-                                    <option value="DIAG_PATIENTS">
-                                        Diagnosis → Patients
-                                    </option>
-                                </>
-                            )}
-
-                            {entity === "Drug" && (
-                                <>
-                                    <option value="DRUG_PATIENTS">
-                                        Drug → Patients Prescribed
-                                    </option>
-                                </>
-                            )}
-                            {entity === "Visit" && (
-                                <>
-                                    <option value="VISIT_DIAGNOSES">
-                                        Visit → Diagnoses
-                                    </option>
-                                    <option value="VISIT_DRUGS">
-                                        Visit → Drugs
-                                    </option>
-                                </>
-                            )}
-                        </select>
+        <main style={mainStyle}>
+            {/* Hero Header */}
+            <header style={headerStyle}>
+                <div style={logoContainerStyle}>
+                    <div>
+                        <h1 className="gradient-text" style={titleStyle}>
+                            UMLS-MIMIC Knowledge Graph Explorer
+                        </h1>
                     </div>
                 </div>
+            </header>
 
-                {/* Input */}
-                <div style={{ marginTop: "20px" }}>
-                    <label style={{ color: "black" }}><b>
-                        {entity === "Patient"
-                            ? "Select Patient ID"
-                            : entity === "Diagnosis"
-                                ? "Enter ICD Code"
-                                : entity === "Drug"
-                                    ? "Enter Drug Name"
-                                    : "Select Visit ID"}
-                    </b></label>
-                    
-                    {/* Dropdown for Patient and Visit */}
-                    {(entity === "Patient" || entity === "Visit") ? (
-                        <select
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            style={selectStyle}
-                            disabled={loadingIds}
+            {/* Main Content */}
+            <div style={containerStyle}>
+                {/* Control Panel */}
+                <section className="glass-card hover-lift" style={controlPanelStyle}>
+                    <h2 style={sectionTitleStyle}>
+                        Query Configuration
+                    </h2>
+
+                    {/* Grid Layout for Controls */}
+                    <div style={controlGridStyle}>
+                        {/* Entity Selection */}
+                        <div style={controlGroupStyle}>
+                            <label style={labelStyle}>
+                                Select Entity
+                            </label>
+                            <select
+                                className="select-premium"
+                                value={entity}
+                                onChange={(e) => {
+                                    const newEntity = e.target.value;
+                                    setEntity(newEntity);
+                                    setInputValue("");
+                                    setRecords({});
+                                    if (newEntity === "Patient") {
+                                        setQuery("PATIENT_DIAGNOSES");
+                                    } else if (newEntity === "Diagnosis") {
+                                        setQuery("DIAG_PATIENTS");
+                                    } else if (newEntity === "Drug") {
+                                        setQuery("DRUG_PATIENTS");
+                                    } else if (newEntity === "Visit") {
+                                        setQuery("VISIT_DIAGNOSES");
+                                    }
+                                }}
+                            >
+                                <option value="Patient">Patient</option>
+                                <option value="Visit">Visit</option>
+                            </select>
+                        </div>
+
+                        {/* Query Selection */}
+                        <div style={controlGroupStyle}>
+                            <label style={labelStyle}>
+                                Select Analysis
+                            </label>
+                            <select
+                                className="select-premium"
+                                value={query}
+                                onChange={(e) => {
+                                    setQuery(e.target.value);
+                                    setInputValue("");
+                                    setRecords({});
+                                }}
+                            >
+                                {entity === "Patient" && (
+                                    <>
+                                        <option value="PATIENT_DRUGS">Patient → Drugs Prescribed</option>
+                                        <option value="PATIENT_DIAGNOSES">Patient → Diagnoses</option>
+                                        <option value="PATIENT_ADMISSIONS">Patient → Visits (Admissions)</option>
+                                    </>
+                                )}
+                                {entity === "Diagnosis" && (
+                                    <option value="DIAG_PATIENTS">Diagnosis → Patients</option>
+                                )}
+                                {entity === "Drug" && (
+                                    <option value="DRUG_PATIENTS">Drug → Patients Prescribed</option>
+                                )}
+                                {entity === "Visit" && (
+                                    <>
+                                        <option value="VISIT_DIAGNOSES">Visit → Diagnoses</option>
+                                        <option value="VISIT_DRUGS">Visit → Drugs</option>
+                                    </>
+                                )}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Input Selection */}
+                    <div style={{ marginTop: "24px" }}>
+                        <label style={labelStyle}>
+                            {entity === "Patient"
+                                ? "Select Patient ID"
+                                : entity === "Diagnosis"
+                                    ? "Enter ICD Code"
+                                    : entity === "Drug"
+                                        ? "Enter Drug Name"
+                                        : "Select Visit ID"}
+                        </label>
+
+                        {(entity === "Patient" || entity === "Visit") ? (
+                            <select
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                className="select-premium"
+                                disabled={loadingIds}
+                            >
+                                <option value="">
+                                    {loadingIds ? "Loading..." : `-- Select ${entity} ID --`}
+                                </option>
+                                {availableIds.map(id => (
+                                    <option key={id} value={id}>{id}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                placeholder={entity === "Diagnosis" ? "e.g. I10 or 250.00" : "e.g. Furosemide"}
+                                className="input-premium"
+                            />
+                        )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={actionBarStyle}>
+                        <button
+                            onClick={runQuery}
+                            className="btn-primary"
+                            disabled={isQuerying}
+                            style={{ display: "flex", alignItems: "center", gap: "10px" }}
                         >
-                            <option value="">
-                                {loadingIds ? "Loading..." : `-- Select ${entity} ID --`}
-                            </option>
-                            {availableIds.map(id => (
-                                <option key={id} value={id}>{id}</option>
-                            ))}
-                        </select>
-                    ) : (
-                        /* Text input for Diagnosis and Drug */
-                        <input
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            placeholder={entity === "Diagnosis" ? "e.g. I10 or 250.00" : "e.g. Furosemide"}
-                            style={inputStyle}
-                        />
-                    )}
-                </div>
+                            {isQuerying ? (
+                                <>
+                                    <span style={spinnerStyle}></span>
+                                    Querying...
+                                </>
+                            ) : (
+                                "Run Query"
+                            )}
+                        </button>
 
-                {/* Buttons */}
-                <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+                        {/* Status Badge */}
+                        {!records.graph && !records.table && !isQuerying && (
+                            <span className="status-badge info">
+                                Run a query to visualize data
+                            </span>
+                        )}
 
-                    <button onClick={runQuery} style={runBtn}>
-                        Run Query
-                    </button>
+                        {(records.graph || records.table) && (
+                            <span className="status-badge success">
+                                Data loaded successfully
+                            </span>
+                        )}
 
-                    {records.length === 0 && (
-                        <p style={{ marginTop: 10, color: "#666" }}>
-                            No results yet. Run a query to see output.
-                        </p>
-                    )}
+                        {/* View Toggle */}
+                        <div style={toggleGroupStyle}>
+                            <button
+                                onClick={() => setView("graph")}
+                                className={`btn-toggle ${view === "graph" ? "active" : ""}`}
+                            >
+                                Graph
+                            </button>
+                            <button
+                                onClick={() => setView("table")}
+                                className={`btn-toggle ${view === "table" ? "active" : ""}`}
+                            >
+                                Table
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
-                    {records.length > 0 && (
-                        <p style={{ marginTop: 10, color: "green" }}>
-                            {records.length} records fetched ✔
-                        </p>
-                    )}
-
-
-                    <button
-                        onClick={() => setView("graph")}
-                        style={view === "graph" ? activeBtn : toggleBtn}
-                    >
-                        Graph
-                    </button>
-
-                    <button
-                        onClick={() => setView("table")}
-                        style={view === "table" ? activeBtn : toggleBtn}
-                    >
-                        Table
-                    </button>
-                </div>
-
-                {/* Output */}
-                <div style={{ marginTop: "30px" }}>
+                {/* Results Section */}
+                <section style={resultsContainerStyle}>
                     {view === "graph" && records.graph && (
-                        <div style={{ display: "flex", gap: "20px" }}>
+                        <div style={graphLayoutStyle}>
                             {/* Node Properties Panel */}
                             {selectedNode && (
-                                <div style={nodePanelStyle}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                                        <h3 style={{ margin: 0, color: "#1f2937", fontSize: "16px" }}>
-                                            {selectedNode.group} Properties
+                                <div className="glass-card" style={nodePanelStyle}>
+                                    <div style={panelHeaderStyle}>
+                                        <h3 style={panelTitleStyle}>
+                                            Node Details
                                         </h3>
                                         <button
                                             onClick={() => setSelectedNode(null)}
-                                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280" }}
+                                            style={closeButtonStyle}
                                         >
                                             ✕
                                         </button>
@@ -419,9 +376,9 @@ export default function Home() {
                                 </div>
                             )}
                             {/* Graph View */}
-                            <div style={{ flex: 1 }}>
-                                <GraphView 
-                                    graph={records.graph} 
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <GraphView
+                                    graph={records.graph}
                                     onNodeClick={(node) => setSelectedNode(node)}
                                 />
                             </div>
@@ -429,99 +386,249 @@ export default function Home() {
                     )}
 
                     {view === "table" && records.table && (
-                        <TableView rows={records.table} />
+                        <div className="glass-card" style={{ padding: "24px" }}>
+                            <h3 style={{ ...panelTitleStyle, marginBottom: "16px" }}>
+                                Query Results
+                            </h3>
+                            <TableView rows={records.table} />
+                        </div>
                     )}
 
-                </div>
+                    {/* Empty State */}
+                    {!records.graph && !records.table && !isQuerying && (
+                        <div className="glass-card" style={emptyStateContainerStyle}>
+                            <div style={emptyStateStyle}>
+                                <p style={emptyDescStyle}>
+                                    Select an entity, choose an analysis type and run the query to visualize the KG.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </section>
             </div>
         </main>
     );
 }
 
-/* ---------- styles ---------- */
+/* ============================================
+   STYLES
+   ============================================ */
 
-const selectStyle = {
-    width: "100%",
-    padding: "10px",
+const mainStyle = {
+    minHeight: "100vh",
+    padding: "0",
+    display: "flex",
+    flexDirection: "column"
+};
+
+const headerStyle = {
+    padding: "40px 50px 30px",
+    background: "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(250,245,255,0.9) 100%)",
+    backdropFilter: "blur(20px)",
+    borderBottom: "2px solid rgba(139, 92, 246, 0.15)"
+};
+
+const logoContainerStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: "20px",
+    maxWidth: "1400px",
+    margin: "0 auto"
+};
+
+const titleStyle = {
+    fontSize: "36px",
+    fontWeight: "800",
+    margin: "0",
+    letterSpacing: "-1px"
+};
+
+const subtitleStyle = {
+    fontSize: "15px",
+    color: "#64748b",
     marginTop: "6px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    backgroundColor: "#ffffff",
-    color: "#000000"
+    fontWeight: "500"
 };
 
-const inputStyle = {
+const containerStyle = {
+    flex: 1,
+    maxWidth: "1400px",
     width: "100%",
-    padding: "10px",
-    marginTop: "6px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    backgroundColor: "#ffffff",
-    color: "#000000"
+    margin: "0 auto",
+    padding: "40px 50px"
 };
 
-
-const runBtn = {
-    padding: "10px 16px",
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer"
+const controlPanelStyle = {
+    padding: "36px",
+    marginBottom: "32px",
+    background: "linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(250,245,255,0.85) 100%)"
 };
 
-const toggleBtn = {
-    padding: "10px 16px",
-    backgroundColor: "#e5e7eb",
-    color: "#000000",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer"
+const sectionTitleStyle = {
+    fontSize: "20px",
+    fontWeight: "800",
+    color: "#3730a3",
+    marginBottom: "28px",
+    display: "flex",
+    alignItems: "center"
 };
 
-const activeBtn = {
-    ...toggleBtn,
-    backgroundColor: "#2563eb",
-    color: "#ffffff"
+const controlGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "24px"
 };
 
+const controlGroupStyle = {
+    display: "flex",
+    flexDirection: "column"
+};
 
-const tableStyle = {
-    background: "#f9fafb",
-    padding: "15px",
-    borderRadius: "8px",
-    maxHeight: "400px",
-    overflow: "auto"
+const labelStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "14px",
+    fontWeight: "700",
+    color: "#6366f1",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px"
+};
+
+const actionBarStyle = {
+    marginTop: "32px",
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "16px"
+};
+
+const toggleGroupStyle = {
+    display: "flex",
+    gap: "8px",
+    marginLeft: "auto"
+};
+
+const spinnerStyle = {
+    width: "18px",
+    height: "18px",
+    border: "2px solid rgba(255,255,255,0.3)",
+    borderTopColor: "white",
+    borderRadius: "50%",
+    animation: "spin 0.8s linear infinite"
+};
+
+const resultsContainerStyle = {
+    animation: "fadeInUp 0.4s ease"
+};
+
+const graphLayoutStyle = {
+    display: "flex",
+    gap: "24px",
+    alignItems: "flex-start"
 };
 
 const nodePanelStyle = {
-    width: "280px",
-    backgroundColor: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "8px",
-    padding: "15px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-    height: "fit-content",
-    maxHeight: "500px",
-    overflowY: "auto"
+    width: "340px",
+    padding: "28px",
+    flexShrink: 0,
+    animation: "fadeInUp 0.3s ease",
+    background: "linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(250,245,255,0.9) 100%)",
+    border: "2px solid rgba(139, 92, 246, 0.15)"
+};
+
+const panelHeaderStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "24px",
+    paddingBottom: "16px",
+    borderBottom: "2px solid rgba(139, 92, 246, 0.15)"
+};
+
+const panelTitleStyle = {
+    margin: 0,
+    fontSize: "18px",
+    fontWeight: "800",
+    color: "#3730a3",
+    display: "flex",
+    alignItems: "center"
+};
+
+const closeButtonStyle = {
+    width: "36px",
+    height: "36px",
+    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%)",
+    border: "2px solid rgba(139, 92, 246, 0.2)",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "16px",
+    color: "#8b5cf6",
+    transition: "all 0.2s ease",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
 };
 
 const propertyRowStyle = {
     display: "flex",
     flexDirection: "column",
-    padding: "8px 0",
-    borderBottom: "1px solid #f3f4f6"
+    gap: "6px",
+    padding: "14px",
+    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%)",
+    borderRadius: "12px",
+    border: "1px solid rgba(139, 92, 246, 0.1)"
 };
 
 const propertyLabelStyle = {
-    fontSize: "12px",
-    color: "#6b7280",
-    marginBottom: "4px",
-    fontWeight: "500"
+    fontSize: "11px",
+    color: "#8b5cf6",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: "1px"
 };
 
 const propertyValueStyle = {
-    fontSize: "14px",
-    color: "#1f2937",
+    fontSize: "15px",
+    color: "#1e1b4b",
+    fontWeight: "600",
     wordBreak: "break-word"
+};
+
+const emptyStateContainerStyle = {
+    padding: "100px 40px",
+    textAlign: "center",
+    background: "linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(250,245,255,0.85) 100%)"
+};
+
+const emptyStateStyle = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "40px"
+};
+
+const emptyTitleStyle = {
+    fontSize: "24px",
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: "12px"
+};
+
+const emptyDescStyle = {
+    fontSize: "17px",
+    color: "#6366f1",
+    maxWidth: "450px",
+    lineHeight: "1.7",
+    fontWeight: "500"
+};
+
+const footerStyle = {
+    padding: "24px 50px",
+    textAlign: "center",
+    color: "#64748b",
+    fontSize: "14px",
+    borderTop: "1px solid rgba(99, 102, 241, 0.1)",
+    background: "rgba(255,255,255,0.8)"
 };

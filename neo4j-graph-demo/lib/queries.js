@@ -65,7 +65,7 @@ export const queries = {
         cypher: `
     MATCH (e:Encounter {id:$visit})-[r:DIAGNOSED]->(d:Diagnosis)
     WITH e, d, collect(r)[0] AS rel
-    RETURN e, rel, d
+    RETURN e, rel, d LIMIT 10
   `,
         param: "visit"
     },
