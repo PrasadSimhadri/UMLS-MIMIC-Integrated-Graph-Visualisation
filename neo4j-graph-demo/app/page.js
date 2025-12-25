@@ -386,10 +386,7 @@ export default function Home() {
                     )}
 
                     {view === "table" && records.table && (
-                        <div className="glass-card" style={{ padding: "24px" }}>
-                            <h3 style={{ ...panelTitleStyle, marginBottom: "16px" }}>
-                                Query Results
-                            </h3>
+                        <div style={{ padding: "24px" }}>
                             <TableView rows={records.table} />
                         </div>
                     )}

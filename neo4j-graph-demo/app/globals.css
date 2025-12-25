@@ -25,7 +25,7 @@
   --node-encounter: #111112ff;
 
   /* Glass Effect - Dark */
-  --glass-bg: rgba(30, 27, 75, 0.7);
+  --glass-bg: rgba(247, 247, 247, 0.7);
   --glass-border: rgba(139, 92, 246, 0.3);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 80px rgba(139, 92, 246, 0.15);
 
@@ -547,10 +547,10 @@ main::before {
 
 .table-premium td {
   padding: 18px 24px;
-  background: rgba(30, 27, 75, 0.6);
-  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
   font-size: 14px;
-  color: var(--text-secondary);
+  color: #1e1b4b;
   transition: all var(--transition-fast);
 }
 
@@ -559,8 +559,8 @@ main::before {
 }
 
 .table-premium tbody tr:hover td {
-  background: rgba(139, 92, 246, 0.15);
-  color: var(--text-primary);
+  background: rgba(139, 92, 246, 0.1);
+  color: #dddce3;
 }
 
 .table-premium tbody tr:last-child td:first-child {
