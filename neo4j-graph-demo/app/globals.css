@@ -250,10 +250,8 @@ main::before {
 }
 
 .glass-card:hover {
-  background: var(--bg-card-hover);
   border-color: rgba(139, 92, 246, 0.5);
   box-shadow: var(--shadow-lg), var(--shadow-glow-purple);
-  transform: translateY(-4px);
 }
 
 .gradient-text {
@@ -265,9 +263,6 @@ main::before {
   animation: gradientShift 10s ease infinite;
 }
 
-.hover-lift {
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-}
 
 .hover-lift:hover {
   transform: translateY(-6px);
@@ -588,23 +583,25 @@ main::before {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(30, 27, 75, 0.5);
-  border-radius: 5px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--gradient-primary);
-  border-radius: 5px;
-  border: 2px solid rgba(15, 23, 42, 0.5);
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--gradient-accent);
+  background: linear-gradient(135deg, #a78bfa 0%, #818cf8 100%);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Selection */

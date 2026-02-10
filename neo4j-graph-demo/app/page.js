@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import GraphView from "@/components/GraphView";
+import CUILookup from "@/components/CUILookup";
 
 export default function Home() {
     const [entity, setEntity] = useState("Patient");
@@ -13,6 +14,7 @@ export default function Home() {
     const [availableIds, setAvailableIds] = useState([]);
     const [loadingIds, setLoadingIds] = useState(false);
     const [isQuerying, setIsQuerying] = useState(false);
+    const [currentTab, setCurrentTab] = useState("graph"); // "graph" or "cuilookup"
 
     // Fetch available IDs when entity changes
     useEffect(() => {
@@ -191,217 +193,256 @@ export default function Home() {
                         </h1>
                     </div>
                 </div>
+                {/* Tab Navigation */}
+                <div style={tabContainerStyle}>
+                    <button
+                        onClick={() => setCurrentTab("graph")}
+                        style={{
+                            ...tabLinkStyle,
+                            color: currentTab === "graph" ? "#a78bfa" : "#94a3b8"
+                        }}
+                    >
+                        Graph Explorer
+                        <span style={{
+                            ...tabUnderlineStyle,
+                            transform: currentTab === "graph" ? "scaleX(1)" : "scaleX(0)"
+                        }} />
+                    </button>
+                    <button
+                        onClick={() => setCurrentTab("cuilookup")}
+                        style={{
+                            ...tabLinkStyle,
+                            color: currentTab === "cuilookup" ? "#a78bfa" : "#94a3b8"
+                        }}
+                    >
+                        CUI Lookup
+                        <span style={{
+                            ...tabUnderlineStyle,
+                            transform: currentTab === "cuilookup" ? "scaleX(1)" : "scaleX(0)"
+                        }} />
+                    </button>
+                </div>
             </header>
 
             {/* Main Content */}
             <div style={containerStyle}>
-                {/* Control Panel */}
-                <section className="glass-card hover-lift" style={controlPanelStyle}>
-                    <h2 style={sectionTitleStyle}>
-                        Query Configuration
-                    </h2>
+                {/* Graph Explorer Tab */}
+                {currentTab === "graph" && (
+                    <>
+                        {/* Control Panel */}
+                        <section className="glass-card hover-lift" style={controlPanelStyle}>
+                            <h2 style={sectionTitleStyle}>
+                                Query Configuration
+                            </h2>
 
-                    {/* Grid Layout for Controls */}
-                    <div style={controlGridStyle}>
-                        {/* Entity Selection */}
-                        <div style={controlGroupStyle}>
-                            <label style={labelStyle}>
-                                Select Entity
-                            </label>
-                            <select
-                                className="select-premium"
-                                value={entity}
-                                onChange={(e) => {
-                                    const newEntity = e.target.value;
-                                    setEntity(newEntity);
-                                    setInputValue("");
-                                    setRecords({});
-                                    if (newEntity === "Patient") {
-                                        setQuery("PATIENT_DIAGNOSES");
-                                    } else if (newEntity === "Diagnosis") {
-                                        setQuery("DIAG_PATIENTS");
-                                    } else if (newEntity === "Drug") {
-                                        setQuery("DRUG_PATIENTS");
-                                    } else if (newEntity === "Visit") {
-                                        setQuery("VISIT_DIAGNOSES");
-                                    }
-                                }}
-                            >
-                                <option value="Patient">Patient</option>
-                                <option value="Visit">Visit</option>
-                            </select>
-                        </div>
+                            {/* Grid Layout for Controls */}
+                            <div style={controlGridStyle}>
+                                {/* Entity Selection */}
+                                <div style={controlGroupStyle}>
+                                    <label style={labelStyle}>
+                                        Select Entity
+                                    </label>
+                                    <select
+                                        className="select-premium"
+                                        value={entity}
+                                        onChange={(e) => {
+                                            const newEntity = e.target.value;
+                                            setEntity(newEntity);
+                                            setInputValue("");
+                                            setRecords({});
+                                            if (newEntity === "Patient") {
+                                                setQuery("PATIENT_DIAGNOSES");
+                                            } else if (newEntity === "Diagnosis") {
+                                                setQuery("DIAG_PATIENTS");
+                                            } else if (newEntity === "Drug") {
+                                                setQuery("DRUG_PATIENTS");
+                                            } else if (newEntity === "Visit") {
+                                                setQuery("VISIT_DIAGNOSES");
+                                            }
+                                        }}
+                                    >
+                                        <option value="Patient">Patient</option>
+                                        <option value="Visit">Visit</option>
+                                    </select>
+                                </div>
 
-                        {/* Query Selection */}
-                        <div style={controlGroupStyle}>
-                            <label style={labelStyle}>
-                                Select Analysis
-                            </label>
-                            <select
-                                className="select-premium"
-                                value={query}
-                                onChange={(e) => {
-                                    setQuery(e.target.value);
-                                    setInputValue("");
-                                    setRecords({});
-                                }}
-                            >
-                                {entity === "Patient" && (
-                                    <>
-                                        <option value="PATIENT_DRUGS">Patient → Drugs Prescribed</option>
-                                        <option value="PATIENT_DIAGNOSES">Patient → Diagnoses</option>
-                                        <option value="PATIENT_ADMISSIONS">Patient → Visits (Admissions)</option>
-                                    </>
+                                {/* Query Selection */}
+                                <div style={controlGroupStyle}>
+                                    <label style={labelStyle}>
+                                        Select Analysis
+                                    </label>
+                                    <select
+                                        className="select-premium"
+                                        value={query}
+                                        onChange={(e) => {
+                                            setQuery(e.target.value);
+                                            setInputValue("");
+                                            setRecords({});
+                                        }}
+                                    >
+                                        {entity === "Patient" && (
+                                            <>
+                                                <option value="PATIENT_DRUGS">Patient → Drugs Prescribed</option>
+                                                <option value="PATIENT_DIAGNOSES">Patient → Diagnoses</option>
+                                                <option value="PATIENT_ADMISSIONS">Patient → Visits (Admissions)</option>
+                                            </>
+                                        )}
+                                        {entity === "Diagnosis" && (
+                                            <option value="DIAG_PATIENTS">Diagnosis → Patients</option>
+                                        )}
+                                        {entity === "Drug" && (
+                                            <option value="DRUG_PATIENTS">Drug → Patients Prescribed</option>
+                                        )}
+                                        {entity === "Visit" && (
+                                            <>
+                                                <option value="VISIT_DIAGNOSES">Visit → Diagnoses</option>
+                                                <option value="VISIT_DRUGS">Visit → Drugs</option>
+                                            </>
+                                        )}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Input Selection */}
+                            <div style={{ marginTop: "24px" }}>
+                                <label style={labelStyle}>
+                                    {entity === "Patient"
+                                        ? "Select Patient ID"
+                                        : entity === "Diagnosis"
+                                            ? "Enter ICD Code"
+                                            : entity === "Drug"
+                                                ? "Enter Drug Name"
+                                                : "Select Visit ID"}
+                                </label>
+
+                                {(entity === "Patient" || entity === "Visit") ? (
+                                    <select
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        className="select-premium"
+                                        disabled={loadingIds}
+                                    >
+                                        <option value="">
+                                            {loadingIds ? "Loading..." : `-- Select ${entity} ID --`}
+                                        </option>
+                                        {availableIds.map(id => (
+                                            <option key={id} value={id}>{id}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        placeholder={entity === "Diagnosis" ? "e.g. I10 or 250.00" : "e.g. Furosemide"}
+                                        className="input-premium"
+                                    />
                                 )}
-                                {entity === "Diagnosis" && (
-                                    <option value="DIAG_PATIENTS">Diagnosis → Patients</option>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div style={actionBarStyle}>
+                                <button
+                                    onClick={runQuery}
+                                    className="btn-primary"
+                                    disabled={isQuerying}
+                                    style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                                >
+                                    {isQuerying ? (
+                                        <>
+                                            <span style={spinnerStyle}></span>
+                                            Querying...
+                                        </>
+                                    ) : (
+                                        "Run Query"
+                                    )}
+                                </button>
+
+                                {/* Status Badge */}
+                                {!records.graph && !records.table && !isQuerying && (
+                                    <span className="status-badge info">
+                                        Run a query to visualize data
+                                    </span>
                                 )}
-                                {entity === "Drug" && (
-                                    <option value="DRUG_PATIENTS">Drug → Patients Prescribed</option>
+
+                                {(records.graph || records.table) && (
+                                    <span className="status-badge success">
+                                        Data loaded successfully
+                                    </span>
                                 )}
-                                {entity === "Visit" && (
-                                    <>
-                                        <option value="VISIT_DIAGNOSES">Visit → Diagnoses</option>
-                                        <option value="VISIT_DRUGS">Visit → Drugs</option>
-                                    </>
-                                )}
-                            </select>
-                        </div>
-                    </div>
 
-                    {/* Input Selection */}
-                    <div style={{ marginTop: "24px" }}>
-                        <label style={labelStyle}>
-                            {entity === "Patient"
-                                ? "Select Patient ID"
-                                : entity === "Diagnosis"
-                                    ? "Enter ICD Code"
-                                    : entity === "Drug"
-                                        ? "Enter Drug Name"
-                                        : "Select Visit ID"}
-                        </label>
+                                {/* View Toggle */}
+                                <div style={toggleGroupStyle}>
+                                    <button
+                                        onClick={() => setView("graph")}
+                                        className={`btn-toggle ${view === "graph" ? "active" : ""}`}
+                                    >
+                                        Graph
+                                    </button>
+                                    <button
+                                        onClick={() => setView("table")}
+                                        className={`btn-toggle ${view === "table" ? "active" : ""}`}
+                                    >
+                                        Table
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
 
-                        {(entity === "Patient" || entity === "Visit") ? (
-                            <select
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                className="select-premium"
-                                disabled={loadingIds}
-                            >
-                                <option value="">
-                                    {loadingIds ? "Loading..." : `-- Select ${entity} ID --`}
-                                </option>
-                                {availableIds.map(id => (
-                                    <option key={id} value={id}>{id}</option>
-                                ))}
-                            </select>
-                        ) : (
-                            <input
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                placeholder={entity === "Diagnosis" ? "e.g. I10 or 250.00" : "e.g. Furosemide"}
-                                className="input-premium"
-                            />
-                        )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div style={actionBarStyle}>
-                        <button
-                            onClick={runQuery}
-                            className="btn-primary"
-                            disabled={isQuerying}
-                            style={{ display: "flex", alignItems: "center", gap: "10px" }}
-                        >
-                            {isQuerying ? (
-                                <>
-                                    <span style={spinnerStyle}></span>
-                                    Querying...
-                                </>
-                            ) : (
-                                "Run Query"
-                            )}
-                        </button>
-
-                        {/* Status Badge */}
-                        {!records.graph && !records.table && !isQuerying && (
-                            <span className="status-badge info">
-                                Run a query to visualize data
-                            </span>
-                        )}
-
-                        {(records.graph || records.table) && (
-                            <span className="status-badge success">
-                                Data loaded successfully
-                            </span>
-                        )}
-
-                        {/* View Toggle */}
-                        <div style={toggleGroupStyle}>
-                            <button
-                                onClick={() => setView("graph")}
-                                className={`btn-toggle ${view === "graph" ? "active" : ""}`}
-                            >
-                                Graph
-                            </button>
-                            <button
-                                onClick={() => setView("table")}
-                                className={`btn-toggle ${view === "table" ? "active" : ""}`}
-                            >
-                                Table
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Results Section */}
-                <section style={resultsContainerStyle}>
-                    {view === "graph" && records.graph && (
-                        <div style={graphLayoutStyle}>
-                            {/* Node Properties Panel */}
-                            {selectedNode && (
-                                <div className="glass-card" style={nodePanelStyle}>
-                                    <div style={panelHeaderStyle}>
-                                        <h3 style={panelTitleStyle}>
-                                            Node Details
-                                        </h3>
-                                        <button
-                                            onClick={() => setSelectedNode(null)}
-                                            style={closeButtonStyle}
-                                        >
-                                            ✕
-                                        </button>
+                        {/* Results Section */}
+                        <section style={resultsContainerStyle}>
+                            {view === "graph" && records.graph && (
+                                <div style={graphLayoutStyle}>
+                                    {/* Node Properties Panel */}
+                                    {selectedNode && (
+                                        <div className="glass-card" style={nodePanelStyle}>
+                                            <div style={panelHeaderStyle}>
+                                                <h3 style={panelTitleStyle}>
+                                                    Node Details
+                                                </h3>
+                                                <button
+                                                    onClick={() => setSelectedNode(null)}
+                                                    style={closeButtonStyle}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                            <NodePropertiesPanel node={selectedNode} />
+                                        </div>
+                                    )}
+                                    {/* Graph View */}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <GraphView
+                                            graph={records.graph}
+                                            onNodeClick={(node) => setSelectedNode(node)}
+                                        />
                                     </div>
-                                    <NodePropertiesPanel node={selectedNode} />
                                 </div>
                             )}
-                            {/* Graph View */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <GraphView
-                                    graph={records.graph}
-                                    onNodeClick={(node) => setSelectedNode(node)}
-                                />
-                            </div>
-                        </div>
-                    )}
 
-                    {view === "table" && records.table && (
-                        <div style={{ padding: "24px" }}>
-                            <TableView rows={records.table} />
-                        </div>
-                    )}
+                            {view === "table" && records.table && (
+                                <div style={{ padding: "24px" }}>
+                                    <TableView rows={records.table} />
+                                </div>
+                            )}
 
-                    {/* Empty State */}
-                    {!records.graph && !records.table && !isQuerying && (
-                        <div className="glass-card" style={emptyStateContainerStyle}>
-                            <div style={emptyStateStyle}>
-                                <p style={emptyDescStyle}>
-                                    Select an entity, choose an analysis type and run the query to visualize the KG.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </section>
+                            {/* Empty State */}
+                            {!records.graph && !records.table && !isQuerying && (
+                                <div className="glass-card" style={emptyStateContainerStyle}>
+                                    <div style={emptyStateStyle}>
+                                        <p style={emptyDescStyle}>
+                                            Select an entity, choose an analysis type and run the query to visualize the KG.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+                    </>
+                )}
+
+                {/* CUI Lookup Tab */}
+                {currentTab === "cuilookup" && (
+                    <CUILookup />
+                )}
             </div>
         </main>
     );
@@ -420,9 +461,10 @@ const mainStyle = {
 
 const headerStyle = {
     padding: "40px 50px 30px",
-    background: "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(250,245,255,0.9) 100%)",
+    background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)",
     backdropFilter: "blur(20px)",
-    borderBottom: "2px solid rgba(139, 92, 246, 0.15)"
+    borderBottom: "2px solid rgba(139, 92, 246, 0.3)",
+    boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3)"
 };
 
 const logoContainerStyle = {
@@ -437,7 +479,13 @@ const titleStyle = {
     fontSize: "36px",
     fontWeight: "800",
     margin: "0",
-    letterSpacing: "-1px"
+    letterSpacing: "-1px",
+    background: "linear-gradient(135deg, #c4b5fd 0%, #a78bfa 25%, #818cf8 50%, #67e8f9 75%, #a5f3fc 100%)",
+    backgroundSize: "200% 200%",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    backgroundClip: "text",
+    animation: "gradientShift 8s ease infinite"
 };
 
 const subtitleStyle = {
@@ -445,6 +493,39 @@ const subtitleStyle = {
     color: "#64748b",
     marginTop: "6px",
     fontWeight: "500"
+};
+
+const tabContainerStyle = {
+    display: "flex",
+    gap: "32px",
+    maxWidth: "1400px",
+    margin: "24px auto 0",
+    padding: "0 4px"
+};
+
+const tabLinkStyle = {
+    background: "none",
+    border: "none",
+    padding: "12px 0",
+    fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+    position: "relative",
+    transition: "color 0.3s ease",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+    fontFamily: "inherit"
+};
+
+const tabUnderlineStyle = {
+    position: "absolute",
+    bottom: "0",
+    left: "0",
+    width: "100%",
+    height: "2px",
+    background: "linear-gradient(90deg, #a78bfa, #67e8f9)",
+    transformOrigin: "left",
+    transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
 };
 
 const containerStyle = {
